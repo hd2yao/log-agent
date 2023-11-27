@@ -11,6 +11,7 @@ package main
 import (
     "fmt"
     "github.com/hd2yao/log-agent/logagent/tailf"
+    "time"
 
     "github.com/sirupsen/logrus"
     "gopkg.in/ini.v1"
@@ -30,6 +31,21 @@ type KafkaConfig struct {
 
 type CollectConfig struct {
     LogFilePath string `ini:"logfile_path"`
+}
+
+// 真正的业务逻辑
+func run() (err error) {
+    // TailTask --> log --> Client --> kafka
+    for {
+        msg, ok := <-tailf.TailTask.Lines
+        if !ok {
+            logrus.Warnf("tail file close reopen, fileName:%s\n", tailf.TailTask.Filename)
+            time.Sleep(time.Second) // 读取出错等一秒
+            continue
+        }
+        fmt.Println("msg:", msg.Text)
+    }
+    return
 }
 
 func main() {
@@ -62,5 +78,11 @@ func main() {
     }
     logrus.Info("init tailf success!")
     // 3.把日志通过 sarama 发送到 kafka
+
+    err := run()
+    if err != nil {
+        logrus.Errorf("run failed, err: %v", err)
+        return
+    }
 
 }
