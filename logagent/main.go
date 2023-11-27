@@ -10,21 +10,40 @@ package main
 
 import (
     "fmt"
-
     "github.com/sirupsen/logrus"
     "gopkg.in/ini.v1"
 )
 
+type Config struct {
+    KafkaConfig   `ini:"kafka"`
+    CollectConfig `ini:"collect"`
+}
+
+type KafkaConfig struct {
+    Address string `ini:"address"`
+    Topic   string `ini:"topic"`
+}
+
+type CollectConfig struct {
+    LogFilePath string `ini:"logfile_path"`
+}
+
 func main() {
     // 0.读配置文件
-    cfg, err := ini.Load("./conf/conf.ini")
-    if err != nil {
-        logrus.Errorf("load config failed, err:%v", err)
+    var config Config
+    //cfg, err := ini.Load("./conf/conf.ini")
+    //if err != nil {
+    //    logrus.Errorf("load config failed, err:%v", err)
+    //    return
+    //}
+    //
+    //kafkaAddr := cfg.Section("kafka").Key("address").String()
+    //fmt.Println(kafkaAddr)
+    if err := ini.MapTo(&config, "./conf/conf.ini"); err != nil {
+        logrus.Errorf("load config failed, err: %v", err)
         return
     }
-
-    kafkaAddr := cfg.Section("kafka").Key("address").String()
-    fmt.Println(kafkaAddr)
+    fmt.Printf("%#v\n", config)
 
     // 1.初始化
 
