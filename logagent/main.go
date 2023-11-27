@@ -10,6 +10,7 @@ package main
 
 import (
     "fmt"
+    "github.com/hd2yao/log-agent/logagent/tailf"
 
     "github.com/sirupsen/logrus"
     "gopkg.in/ini.v1"
@@ -50,12 +51,16 @@ func main() {
 
     // 1.初始化（连接kafka）
     if err := kafka.Init([]string{config.KafkaConfig.Address}); err != nil {
-        logrus.Errorf("collect kafka failed, err: %v", err)
+        logrus.Errorf("connect kafka failed, err: %v", err)
         return
     }
     logrus.Info("init kafka success!")
     // 2.根据配置文件中的日志路径，使用 tailf 去收集日志
-
+    if err := tailf.Init(config.CollectConfig.LogFilePath); err != nil {
+        logrus.Errorf("init tailf config failed, err: %v", err)
+        return
+    }
+    logrus.Info("init tailf success!")
     // 3.把日志通过 sarama 发送到 kafka
 
 }
