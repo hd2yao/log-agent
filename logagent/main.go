@@ -10,8 +10,11 @@ package main
 
 import (
     "fmt"
+
     "github.com/sirupsen/logrus"
     "gopkg.in/ini.v1"
+
+    "github.com/hd2yao/log-agent/logagent/kafka"
 )
 
 type Config struct {
@@ -45,8 +48,12 @@ func main() {
     }
     fmt.Printf("%#v\n", config)
 
-    // 1.初始化
-
+    // 1.初始化（连接kafka）
+    if err := kafka.Init([]string{config.KafkaConfig.Address}); err != nil {
+        logrus.Errorf("collect kafka failed, err: %v", err)
+        return
+    }
+    logrus.Info("init kafka success!")
     // 2.根据配置文件中的日志路径，使用 tailf 去收集日志
 
     // 3.把日志通过 sarama 发送到 kafka
