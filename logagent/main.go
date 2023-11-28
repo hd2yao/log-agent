@@ -10,13 +10,14 @@ package main
 
 import (
     "fmt"
-    "github.com/hd2yao/log-agent/logagent/tailf"
+    "github.com/IBM/sarama"
     "time"
 
     "github.com/sirupsen/logrus"
     "gopkg.in/ini.v1"
 
     "github.com/hd2yao/log-agent/logagent/kafka"
+    "github.com/hd2yao/log-agent/logagent/tailf"
 )
 
 type Config struct {
@@ -25,8 +26,9 @@ type Config struct {
 }
 
 type KafkaConfig struct {
-    Address string `ini:"address"`
-    Topic   string `ini:"topic"`
+    Address  string `ini:"address"`
+    Topic    string `ini:"topic"`
+    ChanSize int64  `ini:"chan_size"`
 }
 
 type CollectConfig struct {
@@ -35,15 +37,21 @@ type CollectConfig struct {
 
 // 真正的业务逻辑
 func run() (err error) {
-    // TailTask --> log --> Client --> kafka
+    // TailTask --> log --> client --> kafka
     for {
-        msg, ok := <-tailf.TailTask.Lines
+        line, ok := <-tailf.TailTask.Lines
         if !ok {
             logrus.Warnf("tail file close reopen, fileName:%s\n", tailf.TailTask.Filename)
             time.Sleep(time.Second) // 读取出错等一秒
             continue
         }
-        fmt.Println("msg:", msg.Text)
+        // 利用通道将同步的代码改为异步的
+        // 把读出来的一行日志包装成 kafka 中的 msg 类型
+        msg := &sarama.ProducerMessage{}
+        msg.Topic = "web_log"
+        msg.Value = sarama.StringEncoder(line.Text)
+        // 放入通道
+        kafka.MsgChan <- msg
     }
     return
 }
@@ -66,7 +74,7 @@ func main() {
     fmt.Printf("%#v\n", config)
 
     // 1.初始化（连接kafka）
-    if err := kafka.Init([]string{config.KafkaConfig.Address}); err != nil {
+    if err := kafka.Init([]string{config.KafkaConfig.Address}, config.KafkaConfig.ChanSize); err != nil {
         logrus.Errorf("connect kafka failed, err: %v", err)
         return
     }
