@@ -10,9 +10,9 @@ package main
 
 import (
     "fmt"
-    "github.com/IBM/sarama"
     "time"
 
+    "github.com/IBM/sarama"
     "github.com/sirupsen/logrus"
     "gopkg.in/ini.v1"
 
