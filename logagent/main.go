@@ -57,40 +57,32 @@ func run() (err error) {
 }
 
 func main() {
-    // 0.读配置文件
     var config Config
-    //cfg, err := ini.Load("./conf/conf.ini")
-    //if err != nil {
-    //    logrus.Errorf("load config failed, err:%v", err)
-    //    return
-    //}
-    //
-    //kafkaAddr := cfg.Section("kafka").Key("address").String()
-    //fmt.Println(kafkaAddr)
+    // 0.读配置文件:初始化配置文件，加载 kafka 和 collect 的配置项
     if err := ini.MapTo(&config, "./conf/conf.ini"); err != nil {
         logrus.Errorf("load config failed, err: %v", err)
         return
     }
     fmt.Printf("%#v\n", config)
 
-    // 1.初始化（连接kafka）
+    // 1.连接kafka，初始化 MsgChan，起后台 goroutine 去往 kafka 中发送 msg
     if err := kafka.Init([]string{config.KafkaConfig.Address}, config.KafkaConfig.ChanSize); err != nil {
         logrus.Errorf("connect kafka failed, err: %v", err)
         return
     }
     logrus.Info("init kafka success!")
+
     // 2.根据配置文件中的日志路径，使用 tailf 去收集日志
     if err := tailf.Init(config.CollectConfig.LogFilePath); err != nil {
         logrus.Errorf("init tailf config failed, err: %v", err)
         return
     }
     logrus.Info("init tailf success!")
-    // 3.把日志通过 sarama 发送到 kafka
 
+    // 3.把日志通过 sarama 包装成 kafka.msg 发送到 MsgChan 中
     err := run()
     if err != nil {
         logrus.Errorf("run failed, err: %v", err)
         return
     }
-
 }
