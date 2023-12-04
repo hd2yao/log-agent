@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/hd2yao/log-agent/logagent/tailf"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/client/v3"
 
 	"github.com/hd2yao/log-agent/logagent/common"
-	"github.com/hd2yao/log-agent/logagent/tailf"
 )
 
 // etcd
@@ -56,19 +56,21 @@ func GetConf(key string) (collectEntryList []common.CollectEntry, err error) {
 
 // WatchConf 监控 etcd 中日志收集项配置变化的函数
 func WatchConf(key string) {
-	watchChan := client.Watch(context.Background(), key)
-	var newConf []common.CollectEntry
-	for wresp := range watchChan {
-		logrus.Info("get new conf from etcd!")
-		for _, evt := range wresp.Events {
-			fmt.Printf("type:%s key:%s value:%s\n", evt.Type, evt.Kv.Key, evt.Kv.Value)
-			err := json.Unmarshal(evt.Kv.Value, &newConf)
-			if err != nil {
-				logrus.Errorf("json unmarshal new conf failed, err:%v", err)
-				continue
+	for {
+		watchChan := client.Watch(context.Background(), key)
+		var newConf []common.CollectEntry
+		for wresp := range watchChan {
+			logrus.Info("get new conf from etcd!")
+			for _, evt := range wresp.Events {
+				fmt.Printf("type:%s key:%s value:%s\n", evt.Type, evt.Kv.Key, evt.Kv.Value)
+				err := json.Unmarshal(evt.Kv.Value, &newConf)
+				if err != nil {
+					logrus.Errorf("json unmarshal new conf failed, err:%v", err)
+					continue
+				}
+				// 告诉tailfile这个模块应该启用新的配置了!
+				tailf.SendNewConf(newConf) // 没有任何接收就是阻塞的
 			}
-			// 告诉tailfile这个模块应该启用新的配置了!
-			tailf.SendNewConf(newConf) // 没有任何接收就是阻塞的
 		}
 	}
 }

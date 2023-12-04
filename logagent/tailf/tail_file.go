@@ -7,13 +7,10 @@ import (
 	"github.com/hpcloud/tail"
 	"github.com/sirupsen/logrus"
 
-	"github.com/hd2yao/log-agent/logagent/common"
 	"github.com/hd2yao/log-agent/logagent/kafka"
 )
 
 // tail 相关
-
-var confChan chan []common.CollectEntry
 
 type tailTask struct {
 	path    string
@@ -58,31 +55,4 @@ func (t *tailTask) run() {
 		// 放入通道
 		kafka.ToMsgChan(msg)
 	}
-}
-
-func Init(allConf []common.CollectEntry) (err error) {
-	// allConf 中存了若干个日志的收集项
-	// 针对每一个日志收集项创建一个对应的 tailObj
-	for _, conf := range allConf {
-		tt := newTailTask(conf.Path, conf.Topic) // 创建一个日志收集任务
-		if err := tt.Init(); err != nil {
-			logrus.Errorf("tailf:create tailTask for path:%s failed, err: %v", conf.Path, err)
-			continue
-		}
-		logrus.Infof("create a tail task for path:%s success\n", conf.Path)
-		// 去收集日志
-		go tt.run()
-	}
-
-	// 初始化新配置的 channel
-	confChan = make(chan []common.CollectEntry) // 做一个阻塞的 channel
-	// 派一个小弟等着新配置来
-	newConf := <-confChan // 取到值说明有新的配置
-	// 新配置来了之后应该管理一下之前启动的那些 tailTask
-	logrus.Infof("get new conf from etcd, conf:%v\n", newConf)
-	return
-}
-
-func SendNewConf(newConf []common.CollectEntry) {
-	confChan <- newConf
 }
