@@ -8,14 +8,11 @@ import (
 
     "github.com/sirupsen/logrus"
     "go.etcd.io/etcd/client/v3"
+
+    "github.com/hd2yao/log-agent/logagent/common"
 )
 
 // etcd
-
-type CollectEntry struct {
-    Path  string `json:"path"`
-    Topic string `json:"topic"`
-}
 
 var (
     client *clientv3.Client
@@ -34,7 +31,7 @@ func Init(address []string) (err error) {
 }
 
 // GetConf 拉取日志收集配置项的函数
-func GetConf(key string) (collectEntryList []CollectEntry, err error) {
+func GetConf(key string) (collectEntryList []common.CollectEntry, err error) {
     ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
     defer cancel()
     resp, err := client.Get(ctx, key)
