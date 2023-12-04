@@ -23,7 +23,9 @@ func main() {
 
     // put
     ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-    valueStr := `[{"path":"D:/Program/project/go/log-agent/logs/sy.log","topic":"sy"},{"path":"D:/Program/project/go/log-agent/logs/web_log.log","topic":"web_log"}]`
+    valueStr := `[{"path":"D:/Program/project/go/log-agent/logs/sy.log","topic":"sy"},
+                {"path":"D:/Program/project/go/log-agent/logs/web_log.log","topic":"web_log"},
+                {"path":"D:/Program/project/go/log-agent/logs/watch_log.log","topic":"watch_log"}]`
     _, err = cli.Put(ctx, "collect_log_conf", valueStr)
     if err != nil {
         fmt.Printf("put to etcd failed, err:%v", err)

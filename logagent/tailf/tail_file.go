@@ -1,16 +1,19 @@
 package tailf
 
 import (
-	"github.com/IBM/sarama"
-	"github.com/hd2yao/log-agent/logagent/kafka"
-	"github.com/hpcloud/tail"
-	"github.com/sirupsen/logrus"
 	"time"
 
+	"github.com/IBM/sarama"
+	"github.com/hpcloud/tail"
+	"github.com/sirupsen/logrus"
+
 	"github.com/hd2yao/log-agent/logagent/common"
+	"github.com/hd2yao/log-agent/logagent/kafka"
 )
 
 // tail 相关
+
+var confChan chan []common.CollectEntry
 
 type tailTask struct {
 	path    string
@@ -70,5 +73,16 @@ func Init(allConf []common.CollectEntry) (err error) {
 		// 去收集日志
 		go tt.run()
 	}
+
+	// 初始化新配置的 channel
+	confChan = make(chan []common.CollectEntry) // 做一个阻塞的 channel
+	// 派一个小弟等着新配置来
+	newConf := <-confChan // 取到值说明有新的配置
+	// 新配置来了之后应该管理一下之前启动的那些 tailTask
+	logrus.Infof("get new conf from etcd, conf:%v\n", newConf)
 	return
+}
+
+func SendNewConf(newConf []common.CollectEntry) {
+	confChan <- newConf
 }
