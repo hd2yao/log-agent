@@ -1,21 +1,19 @@
 package etcd
 
 import (
-    "context"
-    "encoding/json"
-    "fmt"
-    "time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
 
-    "github.com/sirupsen/logrus"
-    "go.etcd.io/etcd/client/v3"
+	"github.com/sirupsen/logrus"
+	"go.etcd.io/etcd/client/v3"
+
+	"github.com/hd2yao/log-agent/logagent/common"
+	"github.com/hd2yao/log-agent/logagent/tailf"
 )
 
 // etcd
-
-type CollectEntry struct {
-    Path  string `json:"path"`
-    Topic string `json:"topic"`
-}
 
 var (
     client *clientv3.Client
@@ -34,7 +32,7 @@ func Init(address []string) (err error) {
 }
 
 // GetConf 拉取日志收集配置项的函数
-func GetConf(key string) (collectEntryList []CollectEntry, err error) {
+func GetConf(key string) (collectEntryList []common.CollectEntry, err error) {
     ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
     defer cancel()
     resp, err := client.Get(ctx, key)
@@ -54,4 +52,31 @@ func GetConf(key string) (collectEntryList []CollectEntry, err error) {
         return
     }
     return
+}
+
+// WatchConf 监控 etcd 中日志收集项配置变化的函数
+func WatchConf(key string) {
+    for {
+        watchChan := client.Watch(context.Background(), key)
+        for wresp := range watchChan {
+            logrus.Info("get new conf from etcd!")
+            for _, evt := range wresp.Events {
+                fmt.Printf("type:%s key:%s value:%s\n", evt.Type, evt.Kv.Key, evt.Kv.Value)
+                var newConf []common.CollectEntry
+                if evt.Type == clientv3.EventTypeDelete {
+                    // 如果是删除
+                    logrus.Warning("FBI warning:etcd delete the key!!!")
+                    tailf.SendNewConf(newConf) // 没有任何接收就是阻塞的
+                    continue
+                }
+                err := json.Unmarshal(evt.Kv.Value, &newConf)
+                if err != nil {
+                    logrus.Errorf("json unmarshal new conf failed, err:%v", err)
+                    continue
+                }
+                // 告诉tailfile这个模块应该启用新的配置了!
+                tailf.SendNewConf(newConf) // 没有任何接收就是阻塞的
+            }
+        }
+    }
 }
